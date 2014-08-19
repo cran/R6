@@ -1,18 +1,26 @@
 #' @export
 print.R6 <- function(x, ...) {
-  cat(
-    "<", class(x)[1], ">\n",
-    "  Public:\n",
-    indent(object_summaries(x), 4),
-    sep = ""
-  )
+  if (is.function(x$print)) {
+    x$print()
 
-  if (!is.null(x$private)) {
+  } else {
     cat(
-      "\n  Private:\n",
-      indent(object_summaries(x$private), 4),
+      "<", class(x)[1], ">\n",
+      "  Public:\n",
+      indent(object_summaries(x), 4),
+      "\n",
       sep = ""
     )
+
+    if (!is.null(x$private)) {
+      cat(
+        "  Private:\n",
+        indent(object_summaries(x$private), 4),
+        "\n",
+        sep = ""
+      )
+    }
+    invisible(x)
   }
 }
 
@@ -23,47 +31,57 @@ print.R6ClassGenerator <- function(x, ...) {
   cat(
     "<", classname, "> object generator\n",
     "  Public:\n",
-    indent(object_summaries(x$public), 4),
+    indent(object_summaries(x$public_fields), 4),
+    indent(object_summaries(x$public_methods), 4),
     sep = ""
   )
 
   if (!is.null(x$active)) {
     cat(
-      "\n  Active bindings:\n",
+      "  Active bindings:\n",
       indent(object_summaries(x$active), 4),
       sep = ""
     )
   }
 
-  if (!is.null(x$private)) {
+  if (!(is.null(x$private_fields) && is.null(x$private_methods))) {
     cat(
-      "\n  Private:\n",
-      indent(object_summaries(x$private), 4),
+      "  Private:\n",
+      indent(object_summaries(x$private_fields), 4),
+      indent(object_summaries(x$private_methods), 4),
       sep = ""
     )
   }
-  cat("\n  Parent: ", format(x$parent_env),  sep = "")
-  cat("\n  Lock: ", x$lock,  sep = "")
+  cat("  Parent env: ", format(x$parent_env), "\n", sep = "")
+  cat("  Lock: ", x$lock, "\n", sep = "")
+  cat("  Portable: ", x$portable, "\n", sep = "")
+  invisible(x)
 }
 
 # Return a summary string of the items of a list or environment
 # x must be a list or environment
 object_summaries <- function(x) {
-  if (is.list(x))
-    names <- names(x)
-  else if (is.environment(x))
-    names <- ls(x, all.names = TRUE)
+  if (length(x) == 0)
+    return(NULL)
 
-  values <- vapply(names, function(name) {
+  if (is.list(x))
+    obj_names <- names(x)
+  else if (is.environment(x))
+    obj_names <- ls(x, all.names = TRUE)
+
+  values <- vapply(obj_names, function(name) {
     obj <- x[[name]]
     if (is.environment(x) && bindingIsActive(name, x)) "active binding"
     else if (is.function(obj)) "function"
     else if (is.environment(obj)) "environment"
     else if (is.atomic(obj)) trim(paste(as.character(obj), collapse = " "))
-    else class(obj)
+    else paste(class(obj), collapse = ", ")
   }, FUN.VALUE = character(1))
 
-  paste0(names, ": ", values, sep = "", collapse = "\n")
+  paste0(
+    paste0(obj_names, ": ", values, sep = "", collapse = "\n"),
+    "\n"
+  )
 }
 
 # Given a string, indent every line by some number of spaces.
