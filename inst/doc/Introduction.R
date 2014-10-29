@@ -275,3 +275,24 @@ PrettyCountingQueue <- R6Class("PrettyCountingQueue",
 pq <- PrettyCountingQueue$new(1, 2, "foobar")
 pq
 
+## ------------------------------------------------------------------------
+A <- R6Class("A", public = list(
+  initialize = function() {
+    reg.finalizer(self,
+                  function(e) print("Finalizer has been called!"),
+                  onexit = TRUE)
+  }
+))
+
+
+# Instantiate an object, but don't save a reference to it
+A$new()
+
+# Run something else to get rid of any references to the object, because the
+# last returned value is saved in .Last.value
+1+1
+
+# Force immediate garbage collection (normally this will happen automatically
+# from time to time)
+gc()
+
