@@ -122,8 +122,11 @@ generator_funs$new <- function(...) {
     }
   }
 
+  # Add refs to other environments in the object --------------------
+  public_bind_env$`.__enclos_env__` <- enclos_env
+
   # Lock ------------------------------------------------------------
-  if (lock) {
+  if (lock_objects) {
     if (has_priv) lockEnvironment(private_bind_env)
     lockEnvironment(public_bind_env)
   }

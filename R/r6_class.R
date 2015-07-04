@@ -30,7 +30,7 @@
 #'
 #'   R6 object generators and R6 objects have a default \code{print} method to
 #'   show them on the screen: they simply list the members and parameters (e.g.
-#'   lock, portable, etc., see above) of the object.
+#'   lock_objects, portable, etc., see above) of the object.
 #'
 #'   The default \code{print} method of R6 objects can be redefined, by
 #'   supplying a public \code{print} method. (\code{print} members that are not
@@ -50,6 +50,32 @@
 #'   When used in non-portable mode, R6 classes behave more like reference
 #'   classes: inheritance across packages will not work well, and \code{self}
 #'   and \code{private} are not necessary for accessing fields.
+#'
+#' @section Cloning objects:
+#'
+#'   R6 objects have a method named \code{clone} by default. To disable this,
+#'   use \code{cloneable=FALSE}. Having the \code{clone} method present will
+#'   slightly increase the memory footprint of R6 objects, but since the method
+#'   will be shared across all R6 objects, the memory use will be negligible.
+#'
+#'   By default, calling \code{x$clone()} on an R6 object will result in a
+#'   shallow clone. That is, if any fields have reference semantics
+#'   (environments, R6, or reference class objects), they will not be copied;
+#'   instead, the clone object will have a field that simply refers to the same
+#'   object.
+#'
+#'   To make a deep copy, you can use \code{x$clone(deep=TRUE)}. With this
+#'   option, any fields that are R6 objects will also be cloned; however,
+#'   environments and reference class objects will not be.
+#'
+#'   If you want different deep copying behavior, you can supply your own
+#'   private method called \code{deep_clone}. This method will be called for
+#'   each field in the object, with two arguments: \code{name}, which is the
+#'   name of the field, and \code{value}, which is the value. Whatever the
+#'   method returns will be used as the value for the field in the new clone
+#'   object. You can write a \code{deep_clone} method that makes copies of
+#'   specific fields, whether they are environments, R6 objects, or reference
+#'   class objects.
 #'
 #' @section S3 details:
 #'
@@ -87,8 +113,16 @@
 #' @param class Should a class attribute be added to the object? Default is
 #'   \code{TRUE}. If \code{FALSE}, the objects will simply look like
 #'   environments, which is what they are.
-#' @param lock Should the environments of the generated objects be locked? If
-#'   locked, new members can't be added to the objects.
+#' @param lock_objects Should the environments of the generated objects be
+#'   locked? If locked, new members can't be added to the objects.
+#' @param lock_class If \code{TRUE}, it won't be possible to add more members to
+#'   the generator object with \code{$set}. If \code{FALSE} (the default), then
+#'   it will be possible to add more members with \code{$set}. The methods
+#'   \code{$is_locked}, \code{$lock}, and \code{$unlock} can be used to query
+#'   and change the locked state of the class.
+#' @param cloneable If \code{TRUE} (the default), the generated objects will
+#'   have method named \code{$clone}, which makes a copy of the object.
+#' @param lock Deprecated as of version 2.1; use \code{lock_class} instead.
 #' @examples
 #' # A queue ---------------------------------------------------------
 #' Queue <- R6Class("Queue",
@@ -287,6 +321,127 @@
 #' s$x
 #' s$getx2()
 #'
+#'
+#' # Cloning objects -------------------------------------------------
+#' a <- Queue$new(5, 6)
+#' a$remove()
+#' #> [1] 5
+#'
+#' # Clone a. New object gets a's state.
+#' b <- a$clone()
+#'
+#' # Can add to each queue separately now.
+#' a$add(10)
+#' b$add(20)
+#'
+#' a$remove()
+#' #> [1] 6
+#' a$remove()
+#' #> [1] 10
+#'
+#' b$remove()
+#' #> [1] 6
+#' b$remove()
+#' #> [1] 20
+#'
+#'
+#' # Deep clones -----------------------------------------------------
+#'
+#'Simple <- R6Class("Simple",
+#'  public = list(
+#'    x = NULL,
+#'    initialize = function(val) self$x <- val
+#'  )
+#')
+#'
+#' Cloner <- R6Class("Cloner",
+#'   public = list(
+#'     s = NULL,
+#'     y = 1,
+#'     initialize = function() self$s <- Simple$new(1)
+#'   )
+#' )
+#'
+#' a <- Cloner$new()
+#' b <- a$clone()
+#' c <- a$clone(deep = TRUE)
+#'
+#' # Modify a
+#' a$s$x <- 2
+#' a$y <- 2
+#'
+#' # b is a shallow clone. b$s is the same as a$s because they are R6 objects.
+#' b$s$x
+#' #> [1] 2
+#' # But a$y and b$y are different, because y is just a value.
+#' b$y
+#' #> [1] 1
+#'
+#' # c is a deep clone, so c$s is not the same as a$s.
+#' c$s$x
+#' #> [1] 1
+#' c$y
+#' #> [1] 1
+#'
+#'
+#' # Deep clones with custom deep_clone method -----------------------
+#'
+#' CustomCloner <- R6Class("CustomCloner",
+#'   public = list(
+#'     e = NULL,
+#'     s1 = NULL,
+#'     s2 = NULL,
+#'     s3 = NULL,
+#'     initialize = function() {
+#'       self$e <- new.env(parent = emptyenv())
+#'       self$e$x <- 1
+#'       self$s1 <- Simple$new(1)
+#'       self$s2 <- Simple$new(1)
+#'       self$s3 <- Simple$new(1)
+#'     }
+#'   ),
+#'   private = list(
+#'     # When x$clone(deep=TRUE) is called, the deep_clone gets invoked once for
+#'     # each field, with the name and value.
+#'     deep_clone = function(name, value) {
+#'       if (name == "e") {
+#'         # e1 is an environment, so use this quick way of copying
+#'         list2env(as.list.environment(value, all.names = TRUE),
+#'                  parent = emptyenv())
+#'
+#'       } else if (name %in% c("s1", "s2")) {
+#'         # s1 and s2 are R6 objects which we can clone
+#'         value$clone()
+#'
+#'       } else {
+#'         # For everything else, just return it. This results in a shallow
+#'         # copy of s3.
+#'         value
+#'       }
+#'     }
+#'   )
+#' )
+#'
+#' a <- CustomCloner$new()
+#' b <- a$clone(deep = TRUE)
+#'
+#' # Change some values in a's fields
+#' a$e$x <- 2
+#' a$s1$x <- 3
+#' a$s2$x <- 4
+#' a$s3$x <- 5
+#'
+#' # b has copies of e, s1, and s2, but shares the same s3
+#' b$e$x
+#' #> [1] 1
+#' b$s1$x
+#' #> [1] 1
+#' b$s2$x
+#' #> [1] 1
+#' b$s3$x
+#' #> [1] 5
+#'
+#'
 #' # Debugging -------------------------------------------------------
 #' \dontrun{
 #' # This will enable debugging the getx() method for objects of the 'Simple'
@@ -307,19 +462,25 @@
 #' s$getx()
 #' undebug(s$getx)
 #' }
+
 # This function is encapsulated so that it is bound in the R6 namespace, but
 # enclosed in the capsule environment
 R6Class <- encapsulate(function(classname = NULL, public = list(),
                                 private = NULL, active = NULL,
-                                inherit = NULL, lock = TRUE, class = TRUE,
-                                portable = TRUE,
-                                parent_env = parent.frame()) {
+                                inherit = NULL, lock_objects = TRUE,
+                                class = TRUE, portable = TRUE,
+                                lock_class = FALSE, cloneable = TRUE,
+                                parent_env = parent.frame(), lock) {
 
   if (!all_named(public) || !all_named(private) || !all_named(active))
     stop("All elements of public, private, and active must be named.")
 
-  if (any(duplicated(c(names(public), names(private), names(active)))))
+  allnames <- c(names(public), names(private), names(active))
+  if (any(duplicated(allnames)))
     stop("All items in public, private, and active must have unique names.")
+
+  if ("clone" %in% allnames)
+    stop("Cannot add a member with reserved name 'clone'.")
 
   if (any(c("self", "private", "super") %in%
       c(names(public), names(private), names(active))))
@@ -331,18 +492,31 @@ R6Class <- encapsulate(function(classname = NULL, public = list(),
   if (length(get_nonfunctions(active)) != 0)
     stop("All items in active must be functions.")
 
+  if (!missing(lock)) {
+    message(paste0(
+      "R6Class ", classname, ": 'lock' argument has been renamed to 'lock_objects' as of version 2.1.",
+      "This code will continue to work, but the 'lock' option will be removed in a later version of R6"
+    ))
+    lock_objects <- lock
+  }
 
   # Create the generator object, which is an environment
   generator <- new.env(parent = capsule)
 
   generator$self <- generator
 
-  generator$classname  <- classname
-  generator$active     <- active
-  generator$portable   <- portable
-  generator$parent_env <- parent_env
-  generator$lock       <- lock
-  generator$class      <- class
+  # Set the generator functions to eval in the generator environment, and copy
+  # them into the generator env.
+  generator_funs <- assign_func_envs(generator_funs, generator)
+  list2env2(generator_funs, generator)
+
+  generator$classname    <- classname
+  generator$active       <- active
+  generator$portable     <- portable
+  generator$parent_env   <- parent_env
+  generator$lock_objects <- lock_objects
+  generator$class        <- class
+  generator$lock_class   <- lock_class
 
   # Separate fields from methods
   generator$public_fields   <- get_nonfunctions(public)
@@ -350,17 +524,15 @@ R6Class <- encapsulate(function(classname = NULL, public = list(),
   generator$public_methods  <- get_functions(public)
   generator$private_methods <- get_functions(private)
 
+  if (cloneable)
+    generator$public_methods$clone <- generator_funs$clone_method
+
   # Capture the unevaluated expression for the superclass; when evaluated in
   # the parent_env, it should return the superclass object.
   generator$inherit <- substitute(inherit)
 
   # Names of methods for which to enable debugging
   generator$debug_names <- character(0)
-
-  # Set the generator functions to eval in the generator environment, and copy
-  # them into the generator env.
-  generator_funs <- assign_func_envs(generator_funs, generator)
-  list2env2(generator_funs, generator)
 
   attr(generator, "name") <- paste0(classname, "_generator")
   class(generator) <- "R6ClassGenerator"

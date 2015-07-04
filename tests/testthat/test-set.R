@@ -62,3 +62,31 @@ test_that("Setting values set values on generator", {
   expect_error(AC$set("public", "z", function() 99, overwrite = TRUE))
   expect_error(AC$set("private", "x2", function(value) 99, overwrite = TRUE))
 })
+
+
+test_that("Setting values with empty public or private", {
+  AC <- R6Class("AC",
+    public = list(),
+    private = list()
+  )
+  AC$set("public", "x", 1)
+  AC$set("private", "y", 1)
+  AC$set("public", "gety", function() private$y)
+
+  a <- AC$new()
+  expect_identical(a$x, 1)
+  expect_identical(a$gety(), 1)
+})
+
+test_that("Locked class", {
+  AC <- R6Class("AC", lock_class = TRUE)
+  expect_error(AC$set("public", "x", 1))
+  expect_error(AC$set("private", "x", 1))
+
+  expect_true(AC$is_locked())
+  AC$unlock()
+  expect_false(AC$is_locked())
+  AC$set("public", "x", 1)
+  AC$lock()
+  expect_error(AC$set("public", "x", 2))
+})
