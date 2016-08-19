@@ -106,7 +106,8 @@ object_summaries <- function(x, exclude = NULL) {
     } else {
       obj <- .subset2(x, name)
       if (is.function(obj)) deparse(args(obj))[[1L]]
-      else if (is.environment(obj)) "environment"
+      # Plain environments (not envs with classes, like R6 or RefClass objects)
+      else if (is.environment(obj) && identical(class(obj), "environment")) "environment"
       else if (is.null(obj)) "NULL"
       else if (is.atomic(obj)) trim(paste(as.character(obj), collapse = " "))
       else paste(class(obj), collapse = ", ")
@@ -130,4 +131,14 @@ indent <- function(str, indent = 0) {
 trim <- function(str, n = 60) {
   if (nchar(str) > n) paste(substr(str, 1, 56), "...")
   else str
+}
+
+
+#' @export
+plot.R6 <- function(x, ...) {
+  if (is.function(x$plot)) {
+    x$plot(...)
+  } else {
+    stop(paste0("No plot method defined for R6 class ", class(x)[1]))
+  }
 }
