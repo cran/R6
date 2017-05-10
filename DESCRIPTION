@@ -1,6 +1,6 @@
 Package: R6
 Title: Classes with Reference Semantics
-Version: 2.2.0
+Version: 2.2.1
 Authors@R: person("Winston", "Chang", role = c("aut", "cre"), email = "winston@stdout.org")
 Description: The R6 package allows the creation of classes with reference
     semantics, similar to R's built-in reference classes. Compared to reference
@@ -14,10 +14,10 @@ License: MIT + file LICENSE
 URL: https://github.com/wch/R6/
 LazyData: true
 VignetteBuilder: knitr
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1
 NeedsCompilation: no
-Packaged: 2016-10-03 20:49:50 UTC; winston
+Packaged: 2017-05-08 17:31:31 UTC; winston
 Author: Winston Chang [aut, cre]
 Maintainer: Winston Chang <winston@stdout.org>
 Repository: CRAN
-Date/Publication: 2016-10-05 09:29:43
+Date/Publication: 2017-05-10 14:06:27 UTC

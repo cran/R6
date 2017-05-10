@@ -1,3 +1,10 @@
+R6 2.2.1
+========
+
+* Vignettes now only try use the microbenchmark package if it is present. This is so that the package builds properly on platforms where microbenchmark is not present, like Solaris.
+
+* Fixed ending position for `trim()`.
+
 R6 2.2.0
 ========
 
@@ -12,7 +19,7 @@ R6 2.1.3
 
 * The `plot` S3 method for R6 objects will call `$plot` on the object if present. (#77)
 
-* Fixed priting of members that are R6 objects. (#88)
+* Fixed printing of members that are R6 objects. (#88)
 
 * Fixed deep cloning for non-portable classes. (#85)
 
