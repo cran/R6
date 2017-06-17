@@ -440,7 +440,7 @@ s1$getx()
 # Original is unaffected by changes to the clone
 s$getx()
 #&gt; [1] 1</code></pre>
-<p>If you don’t want a <code>clone</code> method to be added, you can use <code>cloneable=FALSE</code> when creating the class. If any loaded R6 object has a <code>clone</code> method, that function uses 44.1 kB, but for each additional object, the <code>clone</code> method costs a trivial amount of space (112 bytes).</p>
+<p>If you don’t want a <code>clone</code> method to be added, you can use <code>cloneable=FALSE</code> when creating the class. If any loaded R6 object has a <code>clone</code> method, that function uses 48.1 kB, but for each additional object, the <code>clone</code> method costs a trivial amount of space (112 bytes).</p>
 <div id="deep-cloning" class="section level4">
 <h4>Deep cloning</h4>
 <p>If there are any fields which are objects with reference sematics (environments, R6 objects, reference class objects), the copy will get a reference to the same object. This is sometimes desirable, but often it is not.</p>
@@ -558,8 +558,8 @@ obj &lt;- A$new()
 rm(obj); gc()
 #&gt; [1] &quot;Finalizer has been called!&quot;
 #&gt;           used (Mb) gc trigger (Mb) max used (Mb)
-#&gt; Ncells  549966 29.4     940480 50.3   940480 50.3
-#&gt; Vcells 1070878  8.2    2060183 15.8  1460527 11.2</code></pre>
+#&gt; Ncells  550905 29.5     940480 50.3   940480 50.3
+#&gt; Vcells 1072054  8.2    2060183 15.8  1489990 11.4</code></pre>
 <p>Finalizers are implemented using the <code>reg.finalizer()</code> function, and they set <code>onexit=TRUE</code>, so that the finalizer will also be called when R exits. This is useful in some cases, like database connections.</p>
 </div>
 </div>
