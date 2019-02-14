@@ -124,7 +124,7 @@ generator_funs$clone_method <- function(deep = FALSE) {
       binding_parent   <- emptyenv()
 
       if (has_private) {
-        private_parent   <- emptyenv()
+        private_parent    <- emptyenv()
         new_slice$private <- new.env(private_parent, hash = FALSE)
       }
       new_slice$binding   <- new.env(binding_parent,   hash = FALSE)
@@ -132,14 +132,14 @@ generator_funs$clone_method <- function(deep = FALSE) {
 
     } else {
       if (has_private) {
-        private_parent   <- parent.env(old_slice$private)
+        private_parent    <- parent.env(old_slice$private)
         new_slice$private <- new.env(private_parent, hash = FALSE)
 
-        binding_parent   <- new_slice$private
+        binding_parent    <- new_slice$private
         new_slice$binding <- new.env(binding_parent, hash = FALSE)
 
       } else {
-        binding_parent <- parent.env(old_slice$binding)
+        binding_parent    <- parent.env(old_slice$binding)
         new_slice$binding <- new.env(binding_parent, hash = FALSE)
       }
 
@@ -321,6 +321,39 @@ generator_funs$clone_method <- function(deep = FALSE) {
   }
   if (has_private && environmentIsLocked(old_1_private)) {
     lockEnvironment(new_1_private)
+  }
+
+  # Finalizer -------------------------------------------------------
+  if (is.function(.subset2(new_1_binding, "finalize"))) {
+    # This wraps the user's `finalize` method. The user's finalize method
+    # typically does not have an `e` argument, so the wrapper needs to consume
+    # the `e` argument.
+    finalizer_wrapper <- function(e) {
+      .subset2(e, "finalize")()
+    }
+    # Reassign the wrapper's environment so that it does not capture the current
+    # environment and prevent objects from getting GC'd.
+    environment(finalizer_wrapper) <- baseenv()
+
+    reg.finalizer(
+      new_1_binding,
+      finalizer_wrapper,
+      onexit = TRUE
+    )
+  }
+
+  if (has_private) {
+    if (is.function(.subset2(new_1_private, "finalize"))) {
+      finalizer_wrapper <- function(e) {
+        .subset2(e, ".__enclos_env__")$private$finalize()
+      }
+      environment(finalizer_wrapper) <- baseenv()
+      reg.finalizer(
+        new_1_binding,
+        finalizer_wrapper,
+        onexit = TRUE
+      )
+    }
   }
 
   class(new_1_binding) <- class(old_1_binding)
