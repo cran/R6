@@ -91,10 +91,12 @@ generator_funs$new <- function(...) {
     if (portable) {
       # Set up the superclass objects
       super_struct <- create_super_env(inherit, public_bind_env,
-                                       private_bind_env, portable = TRUE)
+                                       private_bind_env, portable = TRUE,
+                                       cloneable = cloneable)
     } else {
       # Set up the superclass objects
-      super_struct <- create_super_env(inherit, public_bind_env, portable = FALSE)
+      super_struct <- create_super_env(inherit, public_bind_env, portable = FALSE,
+                                       cloneable = cloneable)
     }
 
     enclos_env$super <- super_struct$bind_env
@@ -120,7 +122,14 @@ generator_funs$new <- function(...) {
     for (name in names(active)) {
       makeActiveBinding(name, active[[name]], public_bind_env)
     }
+
+    # If there are active bindings, then we need to store a copy of the active
+    # bindings in case the object is cloned. This is because as of R 4.0,
+    # there's no way to get the function associated with an active binding;
+    # you can only get the return value.
+    enclos_env$`.__active__` <- active
   }
+
 
   # Add refs to other environments in the object --------------------
   public_bind_env$`.__enclos_env__` <- enclos_env
@@ -191,7 +200,7 @@ encapsulate({
   # recursing early on in the function, and then fill the methods downward by
   # doing the work for each level and passing the needed information down.
   create_super_env <- function(inherit, public_bind_env, private_bind_env = NULL,
-                               portable = TRUE) {
+                               portable = TRUE, cloneable = TRUE) {
     public_methods  <- inherit$public_methods
     private_methods <- inherit$private_methods
     active          <- inherit$active
@@ -237,7 +246,7 @@ encapsulate({
     inherit_inherit <- inherit$get_inherit()
     if (!is.null(inherit_inherit)) {
       super_struct <- create_super_env(inherit_inherit, public_bind_env,
-                                       private_bind_env, portable)
+                                       private_bind_env, portable, cloneable)
       super_enclos_env$super <- super_struct$bind_env
 
       # Merge this level's methods over the superclass methods
@@ -249,8 +258,13 @@ encapsulate({
     # Copy the methods into the binding environment ---------------------
     list2env2(public_methods, envir = super_bind_env)
     list2env2(private_methods, envir = super_bind_env)
-    for (name in names(active)) {
-      makeActiveBinding(name, active[[name]], super_bind_env)
+    if (!is.null(active)) {
+      for (name in names(active)) {
+        makeActiveBinding(name, active[[name]], super_bind_env)
+      }
+      # If there are active bindings, then we need to store a copy of the
+      # active bindings in case the object is cloned.
+      super_enclos_env$`.__active__` <- active
     }
 
     # Return an object with all the information needed to merge down
