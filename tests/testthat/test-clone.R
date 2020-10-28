@@ -426,7 +426,235 @@ test_that("Lock state", {
 })
 
 
-test_that("Cloning inherited methods", {
+test_that("Cloning and inheritance of parent env", {
+  # ==========================
+  # Portable
+  # ==========================
+  A <- local({
+    y <- 1
+    R6Class("A",
+      public = list(
+        x = 1,
+        getx = function() self$x,
+        gety = function() y
+      )
+    )
+  })
+
+  # Check the environments of the original class
+  a <- A$new()
+  expect_identical(a$.__enclos_env__, environment(a$getx))
+  expect_identical(a, a$.__enclos_env__$self)
+
+  a2 <- a$clone()
+  expect_identical(a2$.__enclos_env__, environment(a2$getx))
+  expect_identical(a2, a2$.__enclos_env__$self)
+
+  expect_false(identical(a, a2))
+
+  B <- local({
+    y <- 2
+    R6Class("B",
+      inherit = A,
+      public = list(
+        getx_super = function() super$getx(),
+        gety_super = function() super$gety()
+      )
+    )
+  })
+
+  b <- B$new()
+  expect_false(exists("super", envir = environment(b$getx)))
+  expect_false(identical(b$.__enclos_env__, environment(b$getx)))
+  expect_true(exists("y", envir = parent.env(environment(b$getx))))
+  # If the method is inherited, the super (of the object, not the method) method
+  # should be the same as the inherited method
+  expect_identical(b$.__enclos_env__$super$getx, b$getx)
+  expect_identical(b, environment(b$getx)$self)
+
+  # Inherited method
+  expect_identical(b$getx(), 1)
+  # Method which calls super
+  expect_identical(b$getx_super(), 1)
+  expect_identical(b$gety(), 1)
+  expect_identical(b$gety_super(), 1)
+
+  b2 <- b$clone()
+  expect_false(exists("super", envir = environment(b2$getx)))
+  expect_false(identical(b2$.__enclos_env__, environment(b2$getx)))
+  expect_true(exists("y", envir = parent.env(environment(b2$getx))))
+  # If the method is inherited, the super (of the object, not the method) method
+  # should be the same as the inherited method
+  expect_identical(b2$.__enclos_env__$super$getx, b2$getx)
+  expect_identical(b2, environment(b2$getx)$self)
+
+  expect_identical(b2$getx(), 1)
+  expect_identical(b2$getx_super(), 1)
+  expect_identical(b$gety(), 1)
+  expect_identical(b$gety_super(), 1)
+
+  b2$x <- 3
+  expect_identical(b2$getx(), 3)
+  expect_identical(b2$getx_super(), 3)
+
+  C <- local({
+    y <- 3
+    R6Class("C",
+      inherit = B,
+      public = list(
+        getx_super = function() super$getx(),
+        gety_super = function() super$gety()
+      )
+    )
+  })
+
+  c <- C$new()
+  expect_false(exists("super", envir = environment(c$getx)))
+  expect_false(identical(c$.__enclos_env__, environment(b$getx)))
+  expect_true(exists("y", envir = parent.env(environment(c$getx))))
+  # If the method is inherited, the super (of the object, not the method) method
+  # should be the same as the inherited method
+  expect_identical(c$.__enclos_env__$super$getx, c$getx)
+  expect_identical(c, environment(c$getx)$self)
+
+  # Inherited method
+  expect_identical(c$getx(), 1)
+  # Method which calls super
+  expect_identical(c$getx_super(), 1)
+  expect_identical(c$gety(), 1)
+  expect_identical(c$gety_super(), 1)
+
+  c2 <- c$clone()
+  expect_false(exists("super", envir = environment(c2$getx)))
+  expect_false(identical(c2$.__enclos_env__, environment(c2$getx)))
+  expect_true(exists("y", envir = parent.env(environment(c2$getx))))
+  # If the method is inherited, the super (of the object, not the method) method
+  # should be the same as the inherited method
+  expect_identical(c2$.__enclos_env__$super$getx, c2$getx)
+  expect_identical(c2, environment(c2$getx)$self)
+
+  expect_identical(c2$getx(), 1)
+  expect_identical(c2$getx_super(), 1)
+  expect_identical(c$gety(), 1)
+  expect_identical(c$gety_super(), 1)
+
+  # ==========================
+  # Non-portable
+  # ==========================
+  A <- local({
+    y <- 1
+    R6Class("A",
+      portable = FALSE,
+      public = list(
+        x = 1,
+        getx = function() x,
+        gety = function() y
+      )
+    )
+  })
+
+  # Check the environments of the original class
+  a <- A$new()
+  expect_identical(a, environment(a$getx))
+  expect_identical(a, a$.__enclos_env__)
+
+  a2 <- a$clone()
+  expect_identical(a, environment(a$getx))
+  expect_identical(a, a$.__enclos_env__)
+
+  expect_false(identical(a, a2))
+
+  B <- local({
+    y <- 2
+    R6Class("B",
+      portable = FALSE,
+      inherit = A,
+      public = list(
+        getx_super = function() super$getx(),
+        gety_super = function() super$gety()
+      )
+    )
+  })
+
+  b <- B$new()
+  expect_identical(b, parent.env(environment(b$getx)))
+  expect_identical(b, b$.__enclos_env__)
+  # The parent of the enclosing env of a super method should be the object
+  # itself.
+  expect_identical(parent.env(environment(b$super$getx)), b)
+  # Inherited method
+  expect_identical(b$getx(), 1)
+  # Method which calls super
+  expect_identical(b$getx_super(), 1)
+  # Because portable=F, the inherited method gets the subclass's environment.
+  expect_identical(b$gety(), 2)
+  expect_identical(b$gety_super(), 2)
+
+  b2 <- b$clone()
+  expect_identical(b2, parent.env(environment(b2$getx)))
+  expect_identical(b2, b2$.__enclos_env__)
+  expect_identical(parent.env(environment(b2$super$getx)), b2)
+
+  expect_identical(b2$getx(), 1)
+  expect_identical(b2$getx_super(), 1)
+  expect_identical(b2$gety(), 2)
+  expect_identical(b2$gety_super(), 2)
+
+  # The original and the clone have the same parent env
+  expect_identical(parent.env(b), parent.env(b2))
+
+  b2$x <- 3
+  expect_identical(b2$getx(), 3)
+  expect_identical(b2$getx_super(), 3)
+
+  b3 <- b2$clone()
+  expect_identical(b3$getx(), 3)
+  expect_identical(b3$getx_super(), 3)
+  expect_identical(b3$gety(), 2)
+  expect_identical(b3$gety_super(), 2)
+
+  C <- local({
+    y <- 3
+    R6Class("C",
+      portable = FALSE,
+      inherit = B,
+      public = list(
+        getx_super = function() super$getx(),
+        gety_super = function() super$gety()
+      )
+    )
+  })
+
+  c <- C$new()
+  expect_identical(c, parent.env(environment(c$getx)))
+  expect_identical(c, c$.__enclos_env__)
+  # The parent of the enclosing env of a super method should be the object
+  # itself.
+  expect_identical(parent.env(environment(c$super$getx)), c)
+  # Inherited method
+  expect_identical(c$getx(), 1)
+  # Method which calls super
+  expect_identical(c$getx_super(), 1)
+  # Because portable=F, the inherited method gets the subclass's environment.
+  expect_identical(c$gety(), 3)
+  expect_identical(c$gety_super(), 3)
+
+  c2 <- c$clone()
+  expect_identical(c2, parent.env(environment(c2$getx)))
+  expect_identical(c2, c2$.__enclos_env__)
+  expect_identical(parent.env(environment(c2$super$getx)), c2)
+
+  expect_identical(c2$getx(), 1)
+  expect_identical(c2$getx_super(), 1)
+  expect_identical(c2$gety(), 3)
+  expect_identical(c2$gety_super(), 3)
+
+  # The original and the clone have the same parent env
+  expect_identical(parent.env(c), parent.env(c2))
+})
+
+
+test_that("Cloning inherited methods for portable classes", {
   # This set of tests makes sure that inherited methods refer to the correct
   # self, private, and super. They also test multiple levels of inheritance.
 
@@ -609,6 +837,223 @@ test_that("Cloning inherited methods", {
 
   # ==== Override-inherit methods ====
   C3_override_inherit <- R6Class("C3_override_inherit",
+    inherit = C2_override,
+    public = list(
+      x = 3
+    )
+  )
+
+  a <- C3_override_inherit$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   1106)
+  expect_identical(a$p_addx(), 1106)
+  expect_identical(a$a_addx,   1106)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 4
+  expect_identical(b$addx(),   1108)
+  expect_identical(b$p_addx(), 1108)
+  expect_identical(b$a_addx,   1108)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 3)
+})
+
+
+
+test_that("Cloning inherited methods for non-portable classes", {
+  # This set of tests makes sure that inherited methods refer to the correct
+  # self, private, and super. They also test multiple levels of inheritance.
+
+  # Base class
+  C1 <- R6Class("C1",
+    portable = FALSE,
+    public = list(
+      x = 1,
+      addx   = function() x + 100,
+      p_addx = function() addx_()
+    ),
+    private = list(
+      addx_  = function() x + 100
+    ),
+    active = list(
+      a_addx = function(val) x + 100
+    )
+  )
+
+
+  # ==== Inherited methods ====
+  C2_inherit <- R6Class("C2_inherit",
+    inherit = C1,
+    portable = FALSE,
+    public = list(
+      x = 2
+    )
+  )
+
+  a <- C2_inherit$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   102)
+  expect_identical(a$p_addx(), 102)
+  expect_identical(a$a_addx,   102)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 3
+  expect_identical(b$addx(),     103)
+  expect_identical(b$p_addx(),   103)
+  expect_identical(b$a_addx,     103)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 2)
+
+
+  # ==== Overridden methods ====
+  C2_override <- R6Class("C2_override",
+    portable = FALSE,
+    inherit = C1,
+    public = list(
+      x = 2,
+      addx = function() super$addx() + x + 1000
+    ),
+    private = list(
+      addx_  = function() super$addx_() + x + 1000
+    ),
+    active = list(
+      a_addx = function(val) super$a_addx + x + 1000
+    )
+  )
+
+  a <- C2_override$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   1104)
+  expect_identical(a$p_addx(), 1104)
+  expect_identical(a$a_addx,   1104)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 3
+  expect_identical(b$addx(),     1106)
+  expect_identical(b$p_addx(),   1106)
+  expect_identical(b$a_addx,     1106)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 2)
+
+
+  # ===========================================================================
+  # Sub-sub-classes:
+  # Need to check sequences of:
+  # inherit-inherit, inherit-override, override-inherit, and override-override
+
+  # ==== Inherit-inherit methods ====
+  C3_inherit_inherit <- R6Class("C3_inherit_inherit",
+    portable = FALSE,
+    inherit = C2_inherit,
+    public = list(
+      x = 3
+    )
+  )
+
+  a <- C3_inherit_inherit$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   103)
+  expect_identical(a$p_addx(), 103)
+  expect_identical(a$a_addx,   103)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 4
+  expect_identical(b$addx(),   104)
+  expect_identical(b$p_addx(), 104)
+  expect_identical(b$a_addx,   104)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 3)
+
+
+  # ==== Inherit-override methods ====
+  C3_inherit_override <- R6Class("C3_inherit_override",
+    portable = FALSE,
+    inherit = C2_inherit,
+    public = list(
+      x = 3,
+      addx = function() super$addx() + x + 10000
+    ),
+    private = list(
+      addx_  = function() super$addx_() + x + 10000
+    ),
+    active = list(
+      a_addx = function(val) super$a_addx + x + 10000
+    )
+  )
+
+  a <- C3_inherit_override$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   10106)
+  expect_identical(a$p_addx(), 10106)
+  expect_identical(a$a_addx,   10106)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 4
+  expect_identical(b$addx(),   10108)
+  expect_identical(b$p_addx(), 10108)
+  expect_identical(b$a_addx,   10108)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 3)
+
+
+  # ==== Override-override methods ====
+  C3_override_override <- R6Class("C3_override_override",
+    portable = FALSE,
+    inherit = C2_override,
+    public = list(
+      x = 3,
+      addx = function() super$addx() + x + 10000
+    ),
+    private = list(
+      addx_  = function() super$addx_() + x + 10000
+    ),
+    active = list(
+      a_addx = function(val) super$a_addx + x + 10000
+    )
+  )
+
+  a <- C3_override_override$new()
+  b <- a$clone()
+
+  expect_identical(a$addx(),   11109)
+  expect_identical(a$p_addx(), 11109)
+  expect_identical(a$a_addx,   11109)
+  expect_identical(a$addx(),   b$addx())
+  expect_identical(a$p_addx(), b$p_addx())
+  expect_identical(a$a_addx,   b$a_addx)
+
+  b$x <- 4
+  expect_identical(b$addx(),   11112)
+  expect_identical(b$p_addx(), 11112)
+  expect_identical(b$a_addx,   11112)
+
+  # Make sure a was unaffected
+  expect_identical(a$x, 3)
+
+
+  # ==== Override-inherit methods ====
+  C3_override_inherit <- R6Class("C3_override_inherit",
+    portable = FALSE,
     inherit = C2_override,
     public = list(
       x = 3
