@@ -1,5 +1,3 @@
-context("clone")
-
 test_that("Can't use reserved name 'clone'", {
   expect_error(R6Class("AC", public = list(clone = function() NULL)))
   expect_error(R6Class("AC", private = list(clone = function() NULL)))
@@ -1079,6 +1077,27 @@ test_that("Cloning inherited methods for non-portable classes", {
   expect_identical(a$x, 3)
 })
 
+test_that("In deep_clone(), don't try to clone non-R6 objects", {
+
+  `$.test` <- function(x, value) {
+    stop("error")
+  }
+
+  AC <- R6Class("AC",
+    public = list(
+      x = NULL,
+      initialize = function() {
+        x <- new.env(parent = emptyenv())
+        class(x) <- "test"
+        self$x <- x
+      }
+    )
+  )
+
+  obj <- AC$new()
+  obj2 <- obj$clone(deep = TRUE)
+  expect_identical(obj$x, obj2$x)
+})
 
 test_that("Deep cloning", {
   AC <- R6Class("AC", public = list(x = 1))

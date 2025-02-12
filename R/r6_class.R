@@ -122,7 +122,6 @@
 #'   and change the locked state of the class.
 #' @param cloneable If \code{TRUE} (the default), the generated objects will
 #'   have method named \code{$clone}, which makes a copy of the object.
-#' @param lock Deprecated as of version 2.1; use \code{lock_class} instead.
 #' @examples
 #' # A queue ---------------------------------------------------------
 #' Queue <- R6Class("Queue",
@@ -470,7 +469,7 @@ R6Class <- encapsulate(function(classname = NULL, public = list(),
                                 inherit = NULL, lock_objects = TRUE,
                                 class = TRUE, portable = TRUE,
                                 lock_class = FALSE, cloneable = TRUE,
-                                parent_env = parent.frame(), lock) {
+                                parent_env = parent.frame()) {
 
   if (!all_named(public) || !all_named(private) || !all_named(active))
     stop("All elements of public, private, and active must be named.")
@@ -491,14 +490,6 @@ R6Class <- encapsulate(function(classname = NULL, public = list(),
 
   if (length(get_nonfunctions(active)) != 0)
     stop("All items in active must be functions.")
-
-  if (!missing(lock)) {
-    message(paste0(
-      "R6Class ", classname, ": 'lock' argument has been renamed to 'lock_objects' as of version 2.1.",
-      "This code will continue to work, but the 'lock' option will be removed in a later version of R6"
-    ))
-    lock_objects <- lock
-  }
 
   # Create the generator object, which is an environment
   generator <- new.env(parent = capsule)
@@ -538,5 +529,21 @@ R6Class <- encapsulate(function(classname = NULL, public = list(),
   attr(generator, "name") <- paste0(classname, "_generator")
   class(generator) <- "R6ClassGenerator"
 
+  # Print message; in a future version, this will be upgraded to a warning.
+  if ("finalize" %in% names(generator$public_methods)) {
+    message(
+      "R6Class ", classname,
+      ": finalize() method is public, but it should be private as of R6 2.4.0. ",
+      "This code will continue to work, but in a future version of R6, ",
+      "finalize() will be required to be private."
+    )
+  }
+
   generator
 })
+
+#' @exportS3Method utils::.DollarNames
+.DollarNames.R6 <- function(x, pattern) {
+  names <- NextMethod()
+  names <- setdiff(names, c(".__enclos_env__", "initialize"))
+}
