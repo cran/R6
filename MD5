@@ -1,7 +1,7 @@
-bf82c7f002a5ac3ad9d5f379853774e5 *DESCRIPTION
+398b9b248553e6c74fbe2b49458e3189 *DESCRIPTION
 d6683a2afab33f1588738ac1ba8151d4 *LICENSE
 23693bb8b34da00f747c803b39b982a3 *NAMESPACE
-47f560f39167a94719b27da784887281 *NEWS.md
+e82876657c660facb4181094f83e9830 *NEWS.md
 df6cc46bc7fae1a55b713f3d5065b35a *R/R6-package.R
 890797fed39cbc35799c315d9c322108 *R/aaa.R
 8fc2b68dd2ba714c478255c42d60fdb5 *R/aslist.R
@@ -11,7 +11,7 @@ bdc3eed04493e6eda7707b085e127963 *R/generator_funs.R
 da8d32330b60debc59dc9ce8a31e877c *R/is.R
 8053880811151634afa62c571ee8d2eb *R/new.R
 31f32ed63aacaf439848ef43dde09add *R/print.R
-160d83019bde99c0ed14876ffc00f1ab *R/r6_class.R
+8c10252c8a9670ad42d99f95655be1ef *R/r6_class.R
 b88a321a00815f8fbf23a3eac1790f5d *R/utils.R
 1bd38c820258c938102c17f018cc269f *README.md
 936b400c8bfa8ef20e78fa7b884d50d1 *man/R6-package.Rd
@@ -28,6 +28,7 @@ d0c61e8ebb47f4bdf74bf4b02714109a *tests/manual/test-inheritance.R
 6235741d7a56921f76b9a728bffe8cdf *tests/testthat/test-aslist.R
 686f9b2b8c81aaba2742959cef2ca839 *tests/testthat/test-clone.R
 689c5d4076b051c83022d07587df2fe7 *tests/testthat/test-cloning-inheritance.R
+e9f132f2b1ec3830e2c67b5c4223e7db *tests/testthat/test-dollarnames.R
 c1350f7af260b0bc173df4aedc4da9fb *tests/testthat/test-finalizer.R
 ba27c46bf9552c83e49fb91f5da0bbcf *tests/testthat/test-is.R
 37a118203b530ffd745aa3d38d3edea3 *tests/testthat/test-nonportable-inheritance.R
